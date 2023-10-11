@@ -1,0 +1,15 @@
+{
+  "name": "webscraper-puppeteer-node",
+  "version": "1.0.0",
+  "description": "Project carried out to deepen study on the subject of Dinamic Web Scrapping with Puppeteer",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "puppeteer": "^21.3.8"
+  }
+}
