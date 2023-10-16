@@ -1,4 +1,5 @@
 const pup = require('puppeteer');
+const { generateExcelReport, printReport } = require("./report.js");
 
 const url = "https://www.amazon.com.br/";
 
@@ -17,9 +18,9 @@ async function evaluateProduct(page, querySelectorInformation) {
   return product;
 }
 
-async function scrapePage(searchFor) {
+async function scrapePage(searchFor, numProductsToScrape) {
   // Call the puppeteer browser
-  const browser = await pup.launch();
+  const browser = await pup.launch({headless: "new"});
   const page = await browser.newPage();
 
   const delay = (milliseconds) =>
@@ -46,28 +47,38 @@ async function scrapePage(searchFor) {
     await page.click("#nav-search-submit-button")  // Click in the search button
   ]);
   
-  // Get all the products links of the current page
-  const links = await page.$$eval(".rush-component > a", e1 => e1.map(link => link.href));
-  // Go through all the links
-  for (const link of links) {
-    if (count === 9){ break }
-    console.log("Product: "+count);
-    await page.goto(link);
-    await page.waitForSelector("#productTitle")
-    // Get the product information from the product page
-    const productTitle = await page.$eval("#productTitle", element => element.innerText)
-    let productBrand = await evaluateProduct(page, ".a-section.a-spacing-none #bylineInfo")
-    if (productBrand) { productBrand = productBrand.replace('Marca:', '').trim() }
-    const productPrice = await evaluateProduct(page, ".a-offscreen")
-    const productDiscount = await evaluateProduct(page, ".a-size-large.a-color-price.savingPriceOverride.aok-align-center.reinventPriceSavingsPercentageMargin.savingsPercentage")
-    // Create a object of the product and push it into the list of products
-    const productObject = {productTitle, productBrand, productPrice, productDiscount, link}
-    productList.push(productObject)
-    count++
+  try{
+    // Get all the products links of the current page
+    const links = await page.$$eval(".rush-component > a", e1 => e1.map(link => link.href));
+    // Go through all the links
+    for (const link of links) {
+      if (count === numProductsToScrape){ break }
+      console.log("Product: "+count);
+      await page.goto(link);
+      await page.waitForSelector("#productTitle")
+      // Get the product information from the product page
+      const productTitle = await page.$eval("#productTitle", element => element.innerText)
+      let productBrand = await evaluateProduct(page, ".a-section.a-spacing-none #bylineInfo")
+      if (productBrand) { productBrand = productBrand.replace('Marca:', '').trim() }
+      const productPrice = await evaluateProduct(page, ".a-offscreen")
+      const productDiscount = await evaluateProduct(page, ".a-size-large.a-color-price.savingPriceOverride.aok-align-center.reinventPriceSavingsPercentageMargin.savingsPercentage")
+      // Create a object of the product and push it into the list of products
+      const productObject = {productTitle, productBrand, productPrice, productDiscount, link}
+      productList.push(productObject)
+      count++
+    }
+    await page.close();
+
+    // Generate the Excel report
+    await generateExcelReport(productList);
+    // Print the list of the products
+    await printReport(productList);
+    return productList // Return the product list
+  } catch(error){
+    console.error("Error in scraping the page:", error);
+    await browser.close();
+    process.exit(1);
   }
-  delay(3000)
-  await page.close();
-  return productList // Return the product list
 }
 
 module.exports = {
